@@ -16,8 +16,6 @@ import qed from '@renderer/assets/qed.txt?raw'
 import app from '@renderer/main'
 import Option from './option'
 
-import Umami from '@stapxs/umami-logger-typescript'
-
 import {
     buildMsgList,
     getMsgData,
@@ -37,8 +35,6 @@ import {
     reloadCookies,
     updateMenu,
     loadJsonMap,
-    sendIdentifyData,
-    sendStatEvent,
 } from '@renderer/function/utils/appUtil'
 import { reactive, markRaw, nextTick } from 'vue'
 import { PopInfo, PopType, Logger, LogType } from './base'
@@ -649,13 +645,6 @@ const msgFunctions = {
             )
 
             authStore.botInfo = data
-            if (Option.get('open_ga_bot') !== false) {
-                const appVersion = data.app_version ? ',' + data.app_version : ''
-                const appInfo = data.app_name ? data.app_name + appVersion : '（未知）'
-
-                sendStatEvent('connect', { method: data.app_name })
-                sendIdentifyData({ bot_version: appInfo })
-            }
             if (!login.status) {
                 // 尝试动态载入对应的 pathMap
                 if (data.app_name !== undefined) {
@@ -2134,7 +2123,6 @@ function revokeMsg(_: string, msg: any) {
     list.splice(msgIndex + 1, 0, msg)
 }
 
-let qed_try_times = 0
 function newMsg(_: string, data: any) {
     const { $t } = app.config.globalProperties
     const authStore = useAuthStore()
@@ -2237,9 +2225,7 @@ function newMsg(_: string, data: any) {
                     ],
                 }
                 uiStore.popBoxList.push(popInfo)
-                Umami.trackEvent('show_qed', { times: qed_try_times })
             }
-            qed_try_times++
         }
 
         // 通知判定预处理 ============================================

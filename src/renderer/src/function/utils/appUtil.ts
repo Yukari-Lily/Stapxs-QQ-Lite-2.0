@@ -1,14 +1,9 @@
 import app from '@renderer/main'
 import FileDownloader from 'js-file-downloader'
 import option from '@renderer/function/option'
-import semver from 'semver'
-import appInfo from '../../../../../package.json'
-import Umami from '@stapxs/umami-logger-typescript'
 
 import AboutPan from '@renderer/components/AboutPan.vue'
-import UpdatePan from '@renderer/components/UpdatePan.vue'
 import WelPan from '@renderer/components/WelPan.vue'
-import MealHungryPan from '@renderer/components/notice-component/MealHungryPan.vue'
 
 import { KeyboardInfo } from '@capacitor/keyboard'
 import { LogType, Logger, PopInfo, PopType } from '@renderer/function/base'
@@ -25,8 +20,6 @@ import {
 } from '@renderer/function/utils/systemUtil'
 import {
     markRaw,
-    defineAsyncComponent,
-    toRaw,
     nextTick,
     Directive,
     WatchHandle,
@@ -653,7 +646,6 @@ import horizontalCss from '@renderer/assets/css/append/mobile/append_mobile_hori
 import verticalCss from '@renderer/assets/css/append/mobile/append_mobile_vertical.css?raw'
 import { ActionType, LocalNotificationSchema } from '@capacitor/local-notifications'
 import { backend } from '@renderer/runtime/backend'
-import { NoticeBodyV3 } from '../elements/system'
 import { wheelMask } from '../input'
 import { addTooltip, TooltipController } from '../tooltip'
 import { VueCompData } from '../elements/vueComp'
@@ -775,263 +767,11 @@ function setQuickLogin(address: string, port: number) {
 }
 
 /**
-* 检查更新
-*/
-export function checkUpdate() {
-    const repoName = import.meta.env.VITE_APP_REPO_NAME
-    // 获取最新的 release 信息
-    const packageUrl =
-        `https://api.github.com/repos/${repoName}/releases/latest`
-    fetch(packageUrl).then((response) => {
-        if (response.ok) {
-            response.json().then((data) => {
-                showUpadteLog(data)
-            })
-        }
-    })
-    localStorage.setItem('version', appInfo.version)
-}
-
-/**
-* 展示更新弹窗
-* @param data 更新数据
-*/
-function showUpadteLog(data: any) {
-    const appVersion = appInfo.version // 当前版本
-    const cacheVersion = localStorage.getItem('version') // 缓存版本
-    // 这儿有两种情况：
-    //    如果当前版本小于获取到的版本就是有更新
-    //    如果缓存版本小于获取到的版本但是当前版本等于获取到的版本就是更新完成首次启动
-    const latestVersion = data.tag_name.substring(1)
-
-    if (semver.lt(appVersion, latestVersion)) {
-        // 有更新
-        showReleaseLog(data, false)
-    }
-    if (
-        cacheVersion &&
-        semver.eq(appVersion, latestVersion) &&
-        semver.lt(cacheVersion, latestVersion)
-    ) {
-        // 更新完成首次启动
-        showReleaseLog(data, true)
-    }
-}
-function showReleaseLog(data: any, isUpdated: boolean) {
-    const uiStore = useUIStore()
-    const { $t } = app.config.globalProperties
-    let msg = data.body
-    // 处理 title，取开头到下一个 “\r\n” 之间的内容
-    const title = msg.split('\r\n')[0].substring(1)
-    // 处理 msg，取 “## 更新内容” 到下一个 “##” 之间的内容
-    const start = msg.indexOf('## 更新内容\r\n')
-    if (start != -1) {
-        msg = msg.substring(start + 9)
-        const end = msg.indexOf('##')
-        if (end != -1) {
-            msg = msg.substring(0, end)
-        }
-    }
-    msg = title + '\r\n' + msg
-    const info = {
-        version:
-            (isUpdated ? localStorage.getItem('version') + ' -> ' : '') +
-            data.tag_name.substring(1),
-        date: data.published_at,
-        user: {
-            name: data.author.login,
-            avatar: data.author.avatar_url,
-            url: data.author.html_url,
-        },
-        message: msg,
-        updated: isUpdated,
-    }
-    const buttonGoUpdate = (!backend.isWeb()) ? [
-        {
-            text: $t('知道了'),
-            fun: () => uiStore.popBoxList.shift(),
-        },
-        {
-            text: $t('下载更新…'),
-            master: true,
-            fun: () => openLink(data.html_url),
-        },
-    ] : [
-        {
-            text: $t('查看…'),
-            fun: () => openLink(data.html_url),
-        },
-        {
-            text: $t('刷新页面'),
-            master: true,
-            fun: () => location.reload(),
-        },
-    ]
-    const popInfo = {
-        template: markRaw(UpdatePan),
-        templateValue: toRaw(info),
-        button: isUpdated ? [
-            {
-                text: $t('查看…'),
-                fun: () => openLink(data.html_url),
-            },
-            {
-                text: $t('知道了'),
-                master: true,
-                fun: () => {
-                    uiStore.popBoxList.shift()
-                },
-            },
-        ] : buttonGoUpdate,
-    }
-    uiStore.popBoxList.push(popInfo)
-}
-
-/**
- * 获取并展示最近5条更新记录
- */
-export function showReleaseHistory() {
-    const uiStore = useUIStore()
-    const { $t } = app.config.globalProperties
-    const repoName = import.meta.env.VITE_APP_REPO_NAME
-    const packageUrl = `https://api.github.com/repos/${repoName}/releases?per_page=5`
-
-    fetch(packageUrl).then((response) => {
-        if (response.ok) {
-            response.json().then((dataList: any[]) => {
-                // 解析最近5条更新记录
-                const releases = dataList.map((data) => {
-                    let msg = data.body
-                    const title = msg.split('\r\n')[0].substring(1)
-                    const start = msg.indexOf('## 更新内容\r\n')
-                    if (start != -1) {
-                        msg = msg.substring(start + 9)
-                        const end = msg.indexOf('##')
-                        if (end != -1) {
-                            msg = msg.substring(0, end)
-                        }
-                    }
-                    msg = title + '\r\n' + msg
-
-                    return {
-                        version: data.tag_name.substring(1),
-                        date: data.published_at,
-                        user: {
-                            name: data.author.login,
-                            avatar: data.author.avatar_url,
-                            url: data.author.html_url,
-                        },
-                        message: msg,
-                        html_url: data.html_url,
-                    }
-                })
-
-                const popInfo = {
-                    title: $t('更新历史'),
-                    template: markRaw(UpdatePan),
-                    templateValue: toRaw({ releases }),
-                    full: true,
-                    button: [
-                        {
-                            text: $t('关闭'),
-                            master: true,
-                            fun: () => {
-                                uiStore.popBoxList.shift()
-                            },
-                        },
-                    ],
-                }
-                uiStore.popBoxList.push(popInfo)
-            })
-        } else {
-            new PopInfo().add(
-                PopType.ERR,
-                $t('获取更新历史失败'),
-                false,
-            )
-        }
-    }).catch(() => {
-        new PopInfo().add(
-            PopType.ERR,
-            $t('获取更新历史失败'),
-            false,
-        )
-    })
-}
-
-/**
 * 显示使用次数弹窗
 */
 export function checkOpenTimes() {
     const uiStore = useUIStore()
     if (import.meta.env.DEV) return     // 开发环境不显示
-    const { $t } = app.config.globalProperties
-    const repoName = import.meta.env.VITE_APP_REPO_NAME
-    const times = localStorage.getItem('times')
-    if (times != null) {
-        const getTimes = Number(times) + 1
-        localStorage.setItem('times', getTimes.toString())
-        if (getTimes % 20 == 0) {
-            // 构建 HTML
-            let html =
-                '<div style="display:flex;flex-direction:column;padding:10px 5%;align-items:center;">'
-            html +=
-                '<svg style="height:2rem;fill:var(--color-font);margin-bottom:20px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M16 0H144c5.3 0 10.3 2.7 13.3 7.1l81.1 121.6c-49.5 4.1-94 25.6-127.6 58.3L2.7 24.9C-.6 20-.9 13.7 1.9 8.5S10.1 0 16 0zM509.3 24.9L401.2 187.1c-33.5-32.7-78.1-54.2-127.6-58.3L354.7 7.1c3-4.5 8-7.1 13.3-7.1H496c5.9 0 11.3 3.2 14.1 8.5s2.5 11.5-.8 16.4zM432 336c0 97.2-78.8 176-176 176s-176-78.8-176-176s78.8-176 176-176s176 78.8 176 176zM264.4 241.1c-3.4-7-13.3-7-16.8 0l-22.4 45.4c-1.4 2.8-4 4.7-7 5.1L168 298.9c-7.7 1.1-10.7 10.5-5.2 16l36.3 35.4c2.2 2.2 3.2 5.2 2.7 8.3l-8.6 49.9c-1.3 7.6 6.7 13.5 13.6 9.9l44.8-23.6c2.7-1.4 6-1.4 8.7 0l44.8 23.6c6.9 3.6 14.9-2.2 13.6-9.9l-8.6-49.9c-.5-3 .5-6.1 2.7-8.3l36.3-35.4c5.6-5.4 2.5-14.8-5.2-16l-50.1-7.3c-3-.4-5.7-2.4-7-5.1l-22.4-45.4z"/></svg>'
-            html += `<span>${$t('好耶！Stapxs QQ Lite 已经被打开 {times} 次了！', { times: getTimes })}</span>`
-            html += `<span>${$t('真的不去点个 star 吗 ……')}</span>`
-            html += '</div>'
-            const popInfo = {
-                title: $t('好耶'),
-                svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg>',
-                html: html,
-                button: [
-                    {
-                        text: $t('不要'),
-                        fun: () => {
-                            uiStore.popBoxList.shift()
-                        },
-                    },
-                    {
-                        text: $t('好喔'),
-                        master: true,
-                        fun: () => {
-                            openLink(
-                                `https://github.com/${repoName}`,
-                            )
-                            uiStore.popBoxList.shift()
-                        },
-                    },
-                ],
-            }
-            uiStore.popBoxList.push(popInfo)
-        }
-        if (getTimes % 50 == 0 && import.meta.env.VITE_APP_SPONSORS_URL) {
-            const popInfo = {
-                title: '',
-                template: markRaw(MealHungryPan),
-                templateValue: { times: getTimes },
-                button: [
-                    {
-                        text: $t('打开…'),
-                        fun: () => {
-                            openLink(import.meta.env.VITE_APP_SPONSORS_URL)
-                            uiStore.popBoxList.shift()
-                        },
-                    },
-                    {
-                        text: $t('好耶'),
-                        master: true,
-                        fun: () => {
-                            uiStore.popBoxList.shift()
-                        },
-                    },
-                ],
-            }
-            uiStore.popBoxList.push(popInfo)
-        }
-    } else {
-        localStorage.setItem('times', '1')
-    }
     // 使用引导
     const guide = localStorage.getItem('guide')
     const guideVersion = 1
@@ -1045,110 +785,6 @@ export function checkOpenTimes() {
         uiStore.popBoxList.push(popInfo)
         localStorage.setItem('guide', guideVersion.toString())
     }
-}
-
-/**
-* 显示全局公告弹窗
-*/
-export function checkNotice() {
-    const uiStore = useUIStore()
-    let url = 'https://lib.stapxs.cn/download/stapxs-qq-lite/notice-config.json'
-    if (import.meta.env.DEV) {
-        url = 'notice_local.json'
-    }
-    const version = 3
-    const fetchData = {
-        time: new Date().getTime().toString(),
-    } as Record<string, string>
-    fetch(url + '?' + new URLSearchParams(fetchData).toString())
-        .then((response) => response.json())
-        .then((data) => {
-            // 获取已显示过的公告 ID
-            let noticeShow = [] as number[]
-            const showId = localStorage.getItem('notice_show')
-            if (showId) {
-                noticeShow = showId.split(',').map((id: string) => parseInt(id))
-            }
-            // 解析公告列表
-            data.forEach((notice: any) => {
-                if (notice.version == version && (notice.client == import.meta.env.VITE_APP_CLIENT_TAG || notice.client == 'all')) {
-                    const noticeBody = notice as NoticeBodyV3
-                    // 当前时间戳（毫秒）
-                    const now = new Date().getTime()
-                    noticeBody.show_date.forEach((dateInterval: number[]) => {
-                        if (dateInterval.length == 2) {
-                            // 判断是否在时间区间内
-                            if (now >= dateInterval[0] && now <= dateInterval[1]) {
-                                noticeBody.is_show = true
-                            }
-                        }
-                    })
-                    if (noticeBody.is_important == true || (noticeBody.is_show && noticeBody.id && noticeShow.indexOf(noticeBody.id) < 0)) {
-                        // 加载公告弹窗列表
-                        for (let i = 0; i < noticeBody.pops.length; i++) {
-                            // 添加弹窗
-                            const info = noticeBody.pops[i]
-                            let popInfo = null as any
-                            const button = [
-                                {
-                                    text:
-                                        /* eslint-disable */
-                                        noticeBody.pops.length > 1 && i != noticeBody.pops.length - 1 ?
-                                            app.config.globalProperties.$t('继续') :
-                                            (info.button_text ? info.button_text : app.config.globalProperties.$t('确定')),
-                                    /* eslint-enable */
-                                    master: true,
-                                    fun: () => {
-                                        // 添加已读记录
-                                        if (noticeShow.indexOf(noticeBody.id) < 0 && !noticeBody.is_important) {
-                                            noticeShow.push(noticeBody.id)
-                                        }
-                                        localStorage.setItem(
-                                            'notice_show',
-                                            noticeShow.toString(),
-                                        )
-                                        // 关闭弹窗
-                                        uiStore.popBoxList.shift()
-                                    },
-                                },
-                            ]
-                            if (info.link_url) {
-                                button.unshift({
-                                    text: app.config.globalProperties.$t('打开…'),
-                                    master: false,
-                                    fun: () => {
-                                        if (info.link_url) {
-                                            openLink(info.link_url)
-                                        }
-                                    }
-                                })
-                            }
-                            if (info.html) {
-                                popInfo = {
-                                    title: info.title,
-                                    html: info.html,
-                                    button: button
-                                }
-                            } else if (info.template) {
-                                popInfo = {
-                                    title: info.title,
-                                    template: markRaw(defineAsyncComponent(
-                                        () => import(`@renderer/components/notice-component/${info.template}.vue`),
-                                    )),
-                                    templateValue: markRaw(info.template_data ? info.template_data : {}),
-                                    button: button
-                                }
-                            } else {
-                                logger.error(null, '未知的公告类型')
-                            }
-                            if (popInfo) {
-                                uiStore.popBoxList.push(popInfo)
-                            }
-                        }
-                    }
-                }
-            })
-        })
 }
 
 /**
@@ -1217,71 +853,6 @@ export function loadJsonMap(name: string) {
         }
     }
     return msgPath
-}
-
-/**
-* UM：上报事件
-* @param event 事件名
-* @param data 数据
-* @param saveLocal 是否额外保存到前端 localStorage
-*/
-export interface LocalStatEventRecord {
-    event: string
-    data: { [key: string]: any }
-    time: number
-}
-
-export const LOCAL_STAT_EVENT_STORAGE_KEY = 'local_umami_stat_events'
-const LOCAL_STAT_EVENT_MAX_COUNT = 500
-
-function getBrowserLocalStatEvents(): LocalStatEventRecord[] {
-    try {
-        const storage = globalThis.localStorage
-        const raw = storage.getItem(LOCAL_STAT_EVENT_STORAGE_KEY)
-        if (!raw) return []
-        const parsed = JSON.parse(raw)
-        return Array.isArray(parsed) ? parsed : []
-    } catch {
-        return []
-    }
-}
-
-function saveBrowserLocalStatEvent(record: LocalStatEventRecord): void {
-    try {
-        const storage = globalThis.localStorage
-        const list = getBrowserLocalStatEvents()
-        list.push(record)
-        if (list.length > LOCAL_STAT_EVENT_MAX_COUNT) {
-            list.splice(0, list.length - LOCAL_STAT_EVENT_MAX_COUNT)
-        }
-        storage.setItem(LOCAL_STAT_EVENT_STORAGE_KEY, JSON.stringify(list))
-    } catch {
-        // ignore local cache failures
-    }
-}
-
-export function sendStatEvent(event: string, data: { [key: string]: any }, saveLocal = false) {
-    if (saveLocal) {
-        saveBrowserLocalStatEvent({
-            event,
-            data,
-            time: Date.now(),
-        })
-    }
-
-    if (!option.get('close_ga') && !import.meta.env.DEV) {
-        Umami.trackEvent(event, data)
-    }
-}
-
-/**
- * UM：上报会话数据
- * @param data 数据
- */
-export function sendIdentifyData(data: { [key: string]: any }) {
-    if (!option.get('close_ga') && !import.meta.env.DEV) {
-        Umami.trackIdentify(data)
-    }
 }
 
 /**
@@ -1534,6 +1105,8 @@ export function useKeyboard(...args: [string, ...string[], () => boolean | undef
     const modifierKeys = ['ctrl', 'shift', 'alt', 'meta']
 
     useEventListener(document, 'keydown', (event) => {
+        // 合成事件（如扩展派发的 new Event('keydown')）没有 key 属性，直接忽略
+        if (!event.key) return
         let allMatch = true
 
         for (const key of keyList) {

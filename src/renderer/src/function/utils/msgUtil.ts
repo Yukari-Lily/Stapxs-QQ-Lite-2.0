@@ -12,7 +12,6 @@ import {
     UserFriendElem,
     UserGroupElem,
 } from '../elements/information'
-import { sendStatEvent } from './appUtil'
 import { backend } from '@renderer/runtime/backend'
 import { useContactStore } from '@renderer/state/contact'
 import { useUIStore } from '@renderer/state/ui'
@@ -520,7 +519,6 @@ export function sendMsgRaw(
     if (msg !== undefined && msg.length > 0) {
         if (authStore.jsonMap.name === 'Lagrange.OneBot') {
             lgrSendMsg(id, msg, type, echo + '_uuid_' + msgUUID)
-            sendStatEvent('send_msg', { type: type })
             return
         }
         switch (type) {
@@ -555,7 +553,6 @@ export function sendMsgRaw(
                 break
             }
         }
-        sendStatEvent('send_msg', { type: type })
     }
 }
 

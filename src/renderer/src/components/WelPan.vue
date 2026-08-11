@@ -12,7 +12,7 @@
         <font-awesome-icon :class="show == 'license' ? 'select' : ''" :icon="['fas', 'pen-nib']" @click="changeView('license')" /><div />
         <font-awesome-icon :class="show.startsWith('function') ? 'select' : ''" :icon="['fas', 'brush']" @click="changeView('function')" /><div />
         <font-awesome-icon :class="show.startsWith('tip') ? 'select' : ''" :icon="['fas', 'book']" @click="changeView('tip')" /><div />
-        <font-awesome-icon :class="show.startsWith('info') ? 'select' : ''" :icon="['fas', 'circle-info']" @click="changeView('info')" /><div />
+        <font-awesome-icon :class="show.startsWith('info') ? 'select' : ''" :icon="['fas', 'circle-info']" @click="changeView('info_free')" /><div />
         <font-awesome-icon :class="show == 'end' ? 'select' : ''" :icon="['fas', 'circle-check']" @click="changeView('end')" />
     </div>
     <div v-if="show == 'home'" class="wel-home">
@@ -32,7 +32,7 @@
                         v-model="settingsStore.sysConfig.language"
                         name="language"
                         title="language"
-                        @change="save($event);gaLanguage($event)">
+                        @change="save($event)">
                         <option v-for="item in languages"
                             :key="item.value"
                             :value="item.value">
@@ -246,34 +246,6 @@
                 <a>{{ $t('消息发送框除了输入内容以外，同时支持粘贴图片、at 群成员功能；不过不支持富媒体显示和多行输入。') }}</a>
             </div>
         </div>
-        <button class="ss-button wel-next" @click="setPage('info')">
-            {{ $t('继续') }}
-        </button>
-    </div>
-    <div v-if="show == 'info'" class="base-box">
-        <div class="lead">
-            <span>{{ $t('统计选项') }}</span>
-            <div />
-            <div>
-                <span>{{ $t('Stapxs QQ Lite 会将部分使用数据上传到自建的 umami 服务器中用于了解用户使用情况以及制作一些有趣的统计信息。') }}</span>
-                <span style="margin-bottom: 20px;">{{ $t('如果你并不希望上传这些数据，可以选择关闭它。') }}</span>
-                <div class="opt-item wel-opt-item"
-                    :style="{ 'background': settingsStore.sysConfig.close_ga !== true ? 'var(--color-card-1)' : 'none' }">
-                    <font-awesome-icon :icon="['fas', 'cloud']" />
-                    <div>
-                        <span>{{ $t('关闭分析') }}</span>
-                        <span>{{ $t('真的不让看吗（小声') }}</span>
-                    </div>
-                    <label class="ss-switch">
-                        <input v-model="settingsStore.sysConfig.close_ga" type="checkbox"
-                            name="close_ga" @change="save">
-                        <div style="background: var(--color-card-2)">
-                            <div />
-                        </div>
-                    </label>
-                </div>
-            </div>
-        </div>
         <button class="ss-button wel-next" @click="setPage('info_free')">
             {{ $t('继续') }}
         </button>
@@ -373,7 +345,7 @@
     import { i18n } from '@renderer/main'
     import languages from '@renderer/assets/l10n/_l10nconfig.json'
     import { runAS, runASWEvent as save } from '@renderer/function/option'
-    import { openLink, sendIdentifyData } from '@renderer/function/utils/appUtil'
+    import { openLink } from '@renderer/function/utils/appUtil'
     import { useSettingsStore } from '@renderer/state/settings'
     import { useUIStore } from '@renderer/state/ui'
 
@@ -406,12 +378,6 @@
     function changeView(name: string) {
         if(show.value === name || show.value === 'license') return
         show.value = name
-    }
-
-    function gaLanguage(event: Event) {
-        const sender = event.target as HTMLInputElement
-        sendIdentifyData({ use_language: sender.value })
-        // TODO: 刷新菜单
     }
 
     function setPage(name: string) {

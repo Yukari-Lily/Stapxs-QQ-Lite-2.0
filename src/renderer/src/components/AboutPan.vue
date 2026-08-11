@@ -35,37 +35,8 @@
             <a>v{{ packageInfo.version }}</a>
             <div class="buttons">
                 <a class="ss-button" @click="goGithub()">{{ $t('访问 GitHub 仓库') }}</a>
-                <a class="ss-button" style="width: 30px" @click="showReleaseHistory()">
-                    <font-awesome-icon :icon="['fas', 'clock-rotate-left']" />
-                </a>
-                <a class="ss-button" style="width: 30px" @click="goFish()">
-                    <font-awesome-icon :icon="['fas', 'fish']" style="transform: rotate(-45deg);" />
-                </a>
             </div>
             <a class="ss-button" style="border-radius: 7px;" @click="dependencies()">{{ $t('更多信息') }}</a>
-            <div v-if="sponsorList.length > 0 && showUI" class="contributors-card">
-                <div />
-                <span> {{ $t('赞助者') }} </span>
-                <div class="contributors">
-                    <div v-for="info in sponsorList.slice(0, 3)" :key="info.user.name">
-                        <img lazy :src="info.user.avatar">
-                        <div>
-                            <span>{{ info.user.name }}</span>
-                            <span>{{ Intl.DateTimeFormat(trueLang, {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                            }).format(getViewTime(Number(info.last_pay_time))) }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div v-if="sponsorList.length > 3">
-                    <img v-for="info in sponsorList.slice(3)"
-                        :key="info.user.name"
-                        lazy
-                        :src="info.user.avatar">
-                </div>
-            </div>
             <div v-if="constList.length > 0 && showUI" class="contributors-card">
                 <div />
                 <span>{{ $t('社区贡献者') }}</span>
@@ -98,14 +69,9 @@
     import packageInfo from '../../../../package.json'
 
     import { markRaw, onMounted, ref } from 'vue'
-    import { openLink, sendStatEvent, showReleaseHistory } from '@renderer/function/utils/appUtil'
+    import { openLink } from '@renderer/function/utils/appUtil'
     import { ContributorElem } from '@renderer/function/elements/system'
 
-    import { getTrueLang, getViewTime } from '@renderer/function/utils/systemUtil'
-
-    import MealHungryPan from '@renderer/components/notice-component/MealHungryPan.vue'
-    import { library } from '@fortawesome/fontawesome-svg-core'
-    import { faClockRotateLeft } from '@fortawesome/free-solid-svg-icons'
     import { i18n } from '@renderer/main'
     import { useUIStore } from '@renderer/state/ui'
 
@@ -118,16 +84,7 @@
         showUI: boolean
     }>()
 
-    const trueLang = ref('zh-CN')
     const constList = ref<ContributorElem[]>([])
-    const sponsorList = ref<{
-        current_plan: string,
-        last_pay_time: string,
-        user: {
-            name: string,
-            avatar: string
-        }
-    }[]>([])
 
     function dependencies() {
         uiStore.popBoxList = []
@@ -141,42 +98,9 @@
     function goGithub() {
         const repoName = import.meta.env.VITE_APP_REPO_NAME
         openLink(`https://github.com/${repoName}`)
-        sendStatEvent('click_statistics', { name: 'visit_github' })
-    }
-
-    function goFish() {
-        sendStatEvent('click_statistics', { name: 'visit_fish' })
-        if(!import.meta.env.VITE_APP_SPONSORS_URL) {
-            // eslint-disable-next-line no-console
-            console.error('是谁没有设置赞助链接？')
-            sendStatEvent('error_statistics', {
-                type: 'sponsor_link_missing'
-            })
-            return
-        }
-        const popInfo = {
-            title: '',
-            template: markRaw(MealHungryPan),
-            allowQuickClose: false,
-            button: [
-                {
-                    text: $t('打开…'),
-                    master: true,
-                    fun: () => {
-                        openLink(import.meta.env.VITE_APP_SPONSORS_URL)
-                        uiStore.popBoxList.shift()
-                    },
-                }
-            ],
-        }
-        uiStore.popBoxList.push(popInfo)
     }
 
     onMounted(() => {
-        library.add(faClockRotateLeft)
-        window.onload = async () => {
-            trueLang.value = getTrueLang()
-        }
         const superThanks = ['doodlehuang']
         // 加载贡献者信息
         if(import.meta.env.VITE_APP_REPO_NAME) {
@@ -193,14 +117,6 @@
                             isSuperThakns: superThanks.includes(data[i].login),
                         })
                     }
-                })
-        }
-        // 加载赞助者信息
-        if(import.meta.env.VITE_APP_SPONSORS_DATA_API) {
-            fetch(import.meta.env.VITE_APP_SPONSORS_DATA_API)
-                .then((response) => response.json())
-                .then((data: { [key: string]: string }) => {
-                    sponsorList.value = data.list as any
                 })
         }
     })

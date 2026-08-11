@@ -21,7 +21,6 @@ import { useUIStore } from '@renderer/state/ui'
 import { useChatStore } from '@renderer/state/chat'
 import {
     loadWinColor,
-    sendStatEvent,
     updateWinColor,
 } from '@renderer/function/utils/appUtil'
 import {
@@ -111,8 +110,6 @@ export const optDefault: { [key: string]: any } = {
     send_face: false,
     use_breakline: true,
     send_key: 'none',
-    close_ga: false,
-    open_ga_bot: true,
     record_recent_emoji: '100times' as 'none' | 'order' | '100times' | '500times',
     enable_local_history: false,
     mixed_load_messages: false,
@@ -292,7 +289,6 @@ function viewRevolve(value: boolean) {
             save('opt_revolve', false)
         } else {
             baseApp.classList.add('no-touch')
-            sendStatEvent('click_statistics', { name: 'touch_randomly' })
         }
     }
 }

@@ -30,7 +30,7 @@
                     <select id="opt-view-language"
                         v-model="settingsStore.sysConfig.language"
                         name="language" title="language"
-                        @change="save($event);gaLanguage($event)">
+                        @change="save($event)">
                         <option v-for="item in languages" :key="item.value" :value="item.value">
                             {{ item.name }}
                         </option>
@@ -110,7 +110,7 @@
                                 <input type="radio" name="theme_color" :data-id="index"
                                     :checked="settingsStore.sysConfig.theme_color === undefined ?
                                         index === 0 : Number(settingsStore.sysConfig.theme_color) === index"
-                                    @change="save($event);gaColor($event)">
+                                    @change="save($event)">
                                 <div
                                     :style="{ 'background': `var(--color-main-${index})` }">
                                     <div />
@@ -302,7 +302,7 @@
                     <select id="opt-view-chatview-name"
                         v-model="settingsStore.sysConfig.chatview_name"
                         name="chatview_name" title="chatview_name"
-                        @change="save($event);gaChatView($event)">
+                        @change="save($event)">
                         <option value="">
                             {{ $t('默认') }}
                         </option>
@@ -454,7 +454,6 @@ import { BrowserInfo, detect } from 'detect-browser'
 import { getDeviceType } from '@renderer/function/utils/systemUtil'
 
 import languages from '../../assets/l10n/_l10nconfig.json'
-import { sendIdentifyData } from '@renderer/function/utils/appUtil'
 import { backend } from '@renderer/runtime/backend'
 import {
     rememberLocalImageUrl,
@@ -529,21 +528,6 @@ onMounted(() => {
         },
     )
 })
-
-function gaLanguage(event: Event) {
-    const sender = event.target as HTMLInputElement
-    sendIdentifyData({ use_language: sender.value })
-}
-
-function gaChatView(event: Event) {
-    const sender = event.target as HTMLInputElement
-    sendIdentifyData({ use_chatview: sender.value })
-}
-
-function gaColor(event: Event) {
-    const sender = event.target as HTMLInputElement
-    sendIdentifyData({ use_theme_color: colors[Number(sender.dataset.id)] })
-}
 
 function themeColorChange(event: Event) {
     event.preventDefault()
@@ -706,7 +690,6 @@ function blurTip(event: Event) {
                     fun: () => {
                         uiStore.popBoxList.shift()
                         save(event)
-                        sendIdentifyData({ use_transparent: true })
                         setTimeout(() => {
                             restartapp()
                         }, 500)
@@ -734,7 +717,6 @@ function blurTip(event: Event) {
                     fun: () => {
                         uiStore.popBoxList.shift()
                         save(event)
-                        sendIdentifyData({ use_transparent: false })
                         setTimeout(() => {
                             restartapp()
                         }, 500)
